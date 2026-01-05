@@ -1,0 +1,12 @@
+{
+    "camera_index": 0,
+    "capture_width": 1280,
+    "capture_height": 720,
+    "display_fullscreen": true,
+    "target_fps": 30,
+    "filter_auto_rotate": true,
+    "filter_rotate_interval_seconds": 15,
+    "gpa_refresh_interval_seconds": 3,
+    "show_fps": true,
+    "show_instructions": true
+}
