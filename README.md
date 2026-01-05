@@ -4,7 +4,7 @@
 - **GPA Scanner** - Face detection with bounding boxes and random GPA overlay (persistent per person)
 - **Dog Filter** - Snapchat-style dog ears and nose anchored to face landmarks
 - **Y2K Retro** - Low-fi CRT aesthetic with pixelation, scanlines, noise, and vintage color grading
-- **Custom Frame** - Overlay your own PNG frame with transparency
+- **Custom Frame** - Overlay your own PNG frame with transparency (to add)
 
 ## Quick Start
 
