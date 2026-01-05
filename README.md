@@ -1,6 +1,4 @@
-# Campus Booth AR Camera
-
-Zero-cost, fully offline AR booth for campus events. Students see themselves on a large display with fun overlays.
+# MAPUA 101
 
 ## Features
 - **GPA Scanner** - Face detection with bounding boxes and random GPA overlay (persistent per person)
