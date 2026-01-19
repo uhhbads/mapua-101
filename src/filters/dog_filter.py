@@ -19,8 +19,8 @@ class DogEarFilter(BaseFilter):
     name = "Dog Filter"
 
     def __init__(self):
-        """Initialize dog ear filter."""
-        self.face_mesh = FaceMesh(min_confidence=0.5, max_faces=4)
+        """Initialize dog ear filter for group shots (5-7+ people)."""
+        self.face_mesh = FaceMesh(min_confidence=0.5, max_faces=8)
         
         # Load or generate assets
         self._left_ear: Optional[np.ndarray] = None

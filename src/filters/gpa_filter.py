@@ -30,12 +30,12 @@ class GPAFilter(BaseFilter):
 
     def __init__(self, gpa_refresh_interval: float = 3.0):
         """
-        Initialize GPA filter.
+        Initialize GPA filter for detecting 5-7+ people.
         
         Args:
             gpa_refresh_interval: Not used anymore, kept for compatibility
         """
-        self.detector = FaceDetector(min_confidence=0.5, model_selection=0)
+        self.detector = FaceDetector(min_confidence=0.5, max_faces=8)
         
         # Track GPAs per face (by approximate position)
         # center -> (gpa, last_seen_time)

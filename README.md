@@ -91,14 +91,14 @@ mapua_101/
 │   ├── display.py           # Display handler with overlays
 │   └── filters/             # Filter modules
 │       ├── base.py          # Base filter + manager
-│       ├── face_detection.py # MediaPipe face detector
+│       ├── face_detection.py # YuNet face detector
 │       ├── face_mesh.py     # MediaPipe face landmarks
 │       ├── gpa_filter.py    # GPA Scanner filter
 │       ├── dog_filter.py    # Dog ears/nose filter
 │       ├── y2k_filter.py    # Y2K retro filter
 │       └── custom_frame_filter.py # Custom frame overlay
 └── assets/
-    ├── models/              # MediaPipe models (auto-downloaded)
+    ├── models/              # YuNet/MediaPipe models (auto-downloaded)
     ├── frames/              # Frame overlays
     └── overlays/            # Filter sprites
 ```

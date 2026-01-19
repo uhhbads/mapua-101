@@ -1,21 +1,18 @@
 """
-Face detection utilities using MediaPipe Tasks API.
+Face detection utilities using OpenCV YuNet.
 """
 
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+import cv2
 import numpy as np
 from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
 import urllib.request
-import os
 
 
-# Model download URL
-MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
-MODEL_FILENAME = "blaze_face_short_range.tflite"
+# YuNet model download URL (OpenCV Zoo)
+MODEL_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+MODEL_FILENAME = "face_detection_yunet_2023mar.onnx"
 
 
 @dataclass
@@ -39,12 +36,12 @@ class FaceDetection:
 
 
 def _ensure_model_downloaded(models_dir: Path) -> Path:
-    """Download model if not present."""
+    """Download YuNet model if not present."""
     models_dir.mkdir(parents=True, exist_ok=True)
     model_path = models_dir / MODEL_FILENAME
     
     if not model_path.exists():
-        print(f"Downloading face detection model...")
+        print(f"Downloading YuNet face detection model...")
         urllib.request.urlretrieve(MODEL_URL, model_path)
         print(f"Model downloaded to {model_path}")
     
@@ -52,35 +49,47 @@ def _ensure_model_downloaded(models_dir: Path) -> Path:
 
 
 class FaceDetector:
-    """MediaPipe Tasks-based face detector."""
+    """OpenCV YuNet-based face detector."""
 
-    def __init__(self, min_confidence: float = 0.5, model_selection: int = 0):
+    def __init__(self, min_confidence: float = 0.5, max_faces: int = 8):
         """
         Initialize face detector.
         
         Args:
             min_confidence: Minimum detection confidence (0.0-1.0)
-            model_selection: 0 for short range, 1 for full range (not used in new API)
+            max_faces: Maximum number of faces to detect (default: 8 for group shots)
         """
         self.min_confidence = min_confidence
-        self._detector: Optional[vision.FaceDetector] = None
+        self.max_faces = max_faces
+        self._detector: Optional[cv2.FaceDetectorYN] = None
+        self._current_size: tuple[int, int] = (0, 0)
+        self._model_path: Optional[Path] = None
         self._initialize()
 
     def _initialize(self) -> None:
-        """Initialize MediaPipe face detection."""
+        """Initialize YuNet face detection."""
         # Get model path (in assets folder relative to project root)
         project_root = Path(__file__).parent.parent.parent
         models_dir = project_root / "assets" / "models"
-        model_path = _ensure_model_downloaded(models_dir)
+        self._model_path = _ensure_model_downloaded(models_dir)
         
-        # Create detector options
-        base_options = python.BaseOptions(model_asset_path=str(model_path))
-        options = vision.FaceDetectorOptions(
-            base_options=base_options,
-            min_detection_confidence=self.min_confidence,
-            running_mode=vision.RunningMode.IMAGE,
+        # Detector will be created on first detect() call when we know the frame size
+        self._detector = None
+
+    def _create_detector(self, width: int, height: int) -> None:
+        """Create or recreate detector for given frame size."""
+        if self._model_path is None:
+            return
+            
+        self._detector = cv2.FaceDetectorYN.create(
+            str(self._model_path),
+            "",  # No config file needed
+            (width, height),
+            self.min_confidence,
+            0.3,  # NMS threshold
+            self.max_faces
         )
-        self._detector = vision.FaceDetector.create_from_options(options)
+        self._current_size = (width, height)
 
     def detect(self, frame: np.ndarray) -> list[FaceDetection]:
         """
@@ -92,49 +101,46 @@ class FaceDetector:
         Returns:
             List of FaceDetection objects
         """
+        h, w = frame.shape[:2]
+        
+        # Create or resize detector if needed
+        if self._detector is None or self._current_size != (w, h):
+            self._create_detector(w, h)
+        
         if self._detector is None:
             return []
 
-        h, w = frame.shape[:2]
-
-        # Convert BGR to RGB for MediaPipe
-        rgb_frame = frame[:, :, ::-1].copy()
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-        
-        # Detect faces
-        result = self._detector.detect(mp_image)
+        # Detect faces - YuNet works directly with BGR
+        _, detections = self._detector.detect(frame)
 
         faces = []
-        for detection in result.detections:
-            bbox = detection.bounding_box
-            
-            # Get absolute pixel coordinates
-            x = bbox.origin_x
-            y = bbox.origin_y
-            width = bbox.width
-            height = bbox.height
-            
-            # Clamp to frame bounds
-            x = max(0, x)
-            y = max(0, y)
-            width = min(width, w - x)
-            height = min(height, h - y)
-
-            # Get confidence score
-            confidence = detection.categories[0].score if detection.categories else 0.5
-
-            faces.append(FaceDetection(
-                x=int(x),
-                y=int(y),
-                width=int(width),
-                height=int(height),
-                confidence=confidence,
-            ))
+        if detections is not None:
+            for det in detections:
+                # YuNet returns: x, y, w, h, right_eye_x, right_eye_y, left_eye_x, left_eye_y,
+                # nose_x, nose_y, right_mouth_x, right_mouth_y, left_mouth_x, left_mouth_y, confidence
+                x = int(det[0])
+                y = int(det[1])
+                width = int(det[2])
+                height = int(det[3])
+                confidence = float(det[14])
+                
+                # Clamp to frame bounds
+                x = max(0, x)
+                y = max(0, y)
+                width = min(width, w - x)
+                height = min(height, h - y)
+                
+                if width > 0 and height > 0:
+                    faces.append(FaceDetection(
+                        x=x,
+                        y=y,
+                        width=width,
+                        height=height,
+                        confidence=confidence,
+                    ))
 
         return faces
 
     def release(self) -> None:
         """Release detector resources."""
-        if self._detector is not None:
-            self._detector.close()
-            self._detector = None
+        self._detector = None
